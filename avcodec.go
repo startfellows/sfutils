@@ -43,35 +43,17 @@ static int mediaRead(void *pointer, uint8_t *buffer, int buf_size)
 }
 
 void getMediaDuration(mediaInfo *result, AVFormatContext *format, int videoStream, int audioStream) {
-    if (format->duration != AV_NOPTS_VALUE) {
-        // Just fuck you.
-        result->duration = format->duration / (double)AV_TIME_BASE;
-        return;
-    }
-
     AVStream *stream = NULL;
-    if (videoStream != -1) {
+    if (videoStream != AVERROR_STREAM_NOT_FOUND) {
         stream = format->streams[videoStream];
-    } else if (audioStream != -1) {
+    } else if (audioStream != AVERROR_STREAM_NOT_FOUND) {
         stream = format->streams[audioStream];
     }
     if (stream == NULL) {
         return;
     }
 
-    if (stream->duration != AV_NOPTS_VALUE) {
-        // And fuck you twice.
-        result->duration = stream->duration / (double)AV_TIME_BASE;
-        return;
-    }
-
-    AVPacket pkt;
-    while (av_read_frame(format, &pkt) == 0) {
-        // Well, actually fuck you thrice.
-        result->duration += pkt.duration * av_q2d(stream->time_base);
-
-        av_packet_unref(&pkt);
-    }
+    result->duration = (double)stream->duration * av_q2d(stream->time_base);
 
     // Still, duration can be fucked, because some files don't provide it and you must calculate duration based on bitrate.
 }
@@ -117,24 +99,16 @@ mediaInfo getMediaInfo(uint8_t *data, size_t length) {
             }
 
             if(result.ok) {
-                int videoStream = -1;
-                int audioStream = -1;
+                int videoStream = av_find_best_stream(format, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
+                int audioStream = av_find_best_stream(format, AVMEDIA_TYPE_AUDIO, -1, -1, NULL, 0);
 
-                for(int i = 0; i < format->nb_streams; ++i) {
-                    if(format->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO && videoStream < 0) {
-                        videoStream = i;
-                    }
-                    if(format->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && audioStream < 0) {
-                        audioStream = i;
-                    }
-                }
-
-                if(videoStream != -1) {
+                if(videoStream != AVERROR_STREAM_NOT_FOUND) {
                     result.width = format->streams[videoStream]->codecpar->width;
                     result.height = format->streams[videoStream]->codecpar->height;
                 }
 
-                getMediaDuration(&result, format, videoStream, audioStream);
+                result.duration = (double)(format->duration) / AV_TIME_BASE;
+                //getMediaDuration(&result, format, videoStream, audioStream);
             }
         }
 
@@ -160,6 +134,10 @@ type MediaInfo struct {
 }
 
 func GetMediaInfo(data []byte) (*MediaInfo, bool) {
+	if len(data) == 0 {
+		return nil, false
+	}
+
 	cMedia := C.getMediaInfo((*C.uchar)(unsafe.Pointer(&data[0])), C.size_t(len(data)))
 
 	videoInfo := &MediaInfo{
