@@ -34,6 +34,7 @@ func (a *Auth) RequireBearerSession(sessionObject interface{}) gin.HandlerFunc {
 		}
 
 		c.Set(a.prefix, i)
+		c.Set(a.prefix+"_token", token)
 
 		c.Next()
 	}
