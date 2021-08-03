@@ -11,8 +11,8 @@ import (
 	"net/http"
 )
 
-var pathCredentials string
-var packageName string
+var PathCredentials string
+var PackageName string
 var err error
 var service *androidpublisher.Service
 
@@ -29,7 +29,7 @@ type IOSResponseData struct {
 
 func init() {
 	ctx := context.Background()
-	service, err = androidpublisher.NewService(ctx, option.WithCredentialsFile(pathCredentials)) // create server for send request
+	service, err = androidpublisher.NewService(ctx, option.WithCredentialsFile(PathCredentials)) // create server for send request
 	if err != nil {
 		log.Fatalf("create service: %s", err)
 		panic(err)
@@ -38,7 +38,7 @@ func init() {
 
 // CheckGooglePlay request for a product by product_id
 func CheckGooglePlay(productId, token string) (*androidpublisher.ProductPurchase, error) {
-	product, err := service.Purchases.Products.Get(packageName, productId, token).Do()
+	product, err := service.Purchases.Products.Get(PackageName, productId, token).Do()
 	return product, err
 }
 
