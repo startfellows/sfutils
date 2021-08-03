@@ -11,8 +11,9 @@ import (
 	"net/http"
 )
 
-var PathCredentials string
-var PackageName string
+var GooglePayPackageName string
+var GooglePayPathCredentials string
+
 var err error
 var service *androidpublisher.Service
 
@@ -27,18 +28,24 @@ type IOSResponseData struct {
 	} `json:"receipt"`
 }
 
-func init() {
+// GetOrCreateGooglePlayService return or create a new service for payment verification
+func GetOrCreateGooglePlayService() *androidpublisher.Service {
 	ctx := context.Background()
-	service, err = androidpublisher.NewService(ctx, option.WithCredentialsFile(PathCredentials)) // create server for send request
-	if err != nil {
-		log.Fatalf("create service: %s", err)
-		panic(err)
+	if service == nil {
+		service, err = androidpublisher.NewService(ctx, option.WithCredentialsFile(GooglePayPathCredentials)) // create server for send request
+		if err != nil {
+			log.Fatalf("create service: %s", err)
+			panic(err)
+		}
 	}
+	return service
 }
 
-// CheckGooglePlay request for a product by product_id
+// CheckGooglePlay check if the service is available for payment 
+// and then get information about the product using his product_id
 func CheckGooglePlay(productId, token string) (*androidpublisher.ProductPurchase, error) {
-	product, err := service.Purchases.Products.Get(PackageName, productId, token).Do()
+	service = GetOrCreateGooglePlayService()
+	product, err := service.Purchases.Products.Get(GooglePayPackageName, productId, token).Do()
 	return product, err
 }
 
